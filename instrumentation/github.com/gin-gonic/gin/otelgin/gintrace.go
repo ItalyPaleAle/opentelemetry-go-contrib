@@ -66,11 +66,26 @@ func Middleware(service string, opts ...Option) gin.HandlerFunc {
 			c.Request = c.Request.WithContext(savedCtx)
 		}()
 		ctx := cfg.Propagators.Extract(savedCtx, propagation.HeaderCarrier(c.Request.Header))
+
+		// Gin's ClientIP method can detect the client's IP from various headers set by proxies, and it's configurable
+		// However, semconvutil supports the X-Forwarded-For header only
+		// So we need to temporarily set the client's IP in the X-Forwarded-For header, before restoring it after the call
+		originalHeader := c.Request.Header.Get("X-Forwarded-For")
+		c.Request.Header.Set("X-Forwarded-For", c.ClientIP())
+
 		opts := []oteltrace.SpanStartOption{
 			oteltrace.WithAttributes(semconvutil.HTTPServerRequest(service, c.Request)...),
 			oteltrace.WithAttributes(semconv.HTTPRoute(c.FullPath())),
 			oteltrace.WithSpanKind(oteltrace.SpanKindServer),
 		}
+
+		// Restore the previous value for X-Forwarded-For
+		if originalHeader == "" {
+			c.Request.Header.Del("X-Forwarded-For")
+		} else {
+			c.Request.Header.Set("X-Forwarded-For", originalHeader)
+		}
+
 		var spanName string
 		if cfg.SpanNameFormatter == nil {
 			spanName = c.FullPath()
