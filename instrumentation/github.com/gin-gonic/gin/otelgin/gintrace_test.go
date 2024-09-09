@@ -66,20 +66,13 @@ func TestPropagationWithGlobalPropagators(t *testing.T) {
 
 	router := gin.New()
 	router.Use(Middleware("foobar", WithTracerProvider(provider)))
-	resCh := make(chan trace.Span, 1)
 	router.GET("/user/:id", func(c *gin.Context) {
-		resCh <- trace.SpanFromContext(c.Request.Context())
+		span := trace.SpanFromContext(c.Request.Context())
+		assert.Equal(t, sc.TraceID(), span.SpanContext().TraceID())
+		assert.Equal(t, sc.SpanID(), span.SpanContext().SpanID())
 	})
 
 	router.ServeHTTP(w, r)
-
-	select {
-	case span := <-resCh:
-		assert.Equal(t, sc.TraceID(), span.SpanContext().TraceID())
-		assert.Equal(t, sc.SpanID(), span.SpanContext().SpanID())
-	case <-time.After(5 * time.Second):
-		t.Fatal("did not receive signal in 5s")
-	}
 }
 
 func TestPropagationWithCustomPropagators(t *testing.T) {
@@ -100,20 +93,13 @@ func TestPropagationWithCustomPropagators(t *testing.T) {
 
 	router := gin.New()
 	router.Use(Middleware("foobar", WithTracerProvider(provider), WithPropagators(b3)))
-	resCh := make(chan trace.Span, 1)
 	router.GET("/user/:id", func(c *gin.Context) {
-		resCh <- trace.SpanFromContext(c.Request.Context())
+		span := trace.SpanFromContext(c.Request.Context())
+		assert.Equal(t, sc.TraceID(), span.SpanContext().TraceID())
+		assert.Equal(t, sc.SpanID(), span.SpanContext().SpanID())
 	})
 
 	router.ServeHTTP(w, r)
-
-	select {
-	case span := <-resCh:
-		assert.Equal(t, sc.TraceID(), span.SpanContext().TraceID())
-		assert.Equal(t, sc.SpanID(), span.SpanContext().SpanID())
-	case <-time.After(5 * time.Second):
-		t.Fatal("did not receive signal in 5s")
-	}
 }
 
 func TestClientIP(t *testing.T) {
