@@ -160,6 +160,7 @@ func TestClientIP(t *testing.T) {
 			r.Header.Set("X-Forwarded-For", "9.8.7.6")
 		},
 		func(router *gin.Engine) {
+			//nolint:errcheck
 			router.SetTrustedProxies(nil)
 		},
 		"1.2.3.4",
@@ -170,6 +171,7 @@ func TestClientIP(t *testing.T) {
 			r.Header.Set("X-Forwarded-For", "9.8.7.6")
 		},
 		func(router *gin.Engine) {
+			//nolint:errcheck
 			router.SetTrustedProxies([]string{"0.0.0.0/0"})
 		},
 		"9.8.7.6",
@@ -182,6 +184,7 @@ func TestClientIP(t *testing.T) {
 		},
 		func(router *gin.Engine) {
 			router.RemoteIPHeaders = []string{"X-Custom-IP", "X-Forwarded-For"}
+			//nolint:errcheck
 			router.SetTrustedProxies([]string{"0.0.0.0/0"})
 		},
 		"9.8.7.6",
