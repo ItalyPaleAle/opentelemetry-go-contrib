@@ -166,7 +166,13 @@ func TestHTTPClientRequestRequired(t *testing.T) {
 }
 
 func TestHTTPServerRequest(t *testing.T) {
-	testFn := func(requestModifierFn func(r *http.Request), opts HTTPServerRequestOptions, expectClientIP string) func(t *testing.T) {
+	type testParams struct {
+		requestModifierFn     func(r *http.Request)
+		httpServerRequestOpts HTTPServerRequestOptions
+		wantClientIP          string
+	}
+
+	testFn := func(tt testParams) func(t *testing.T) {
 		return func(t *testing.T) {
 			reqCh := make(chan *http.Request, 1)
 			handler := func(w http.ResponseWriter, r *http.Request) {
@@ -186,8 +192,8 @@ func TestHTTPServerRequest(t *testing.T) {
 			req, err := http.NewRequest(http.MethodGet, srv.URL, nil)
 			require.NoError(t, err)
 
-			if requestModifierFn != nil {
-				requestModifierFn(req)
+			if tt.requestModifierFn != nil {
+				tt.requestModifierFn(req)
 			}
 
 			resp, err := srv.Client().Do(req)
@@ -216,33 +222,34 @@ func TestHTTPServerRequest(t *testing.T) {
 					attribute.String("net.sock.peer.addr", peer),
 					attribute.Int("net.sock.peer.port", peerPort),
 					attribute.String("user_agent.original", "Go-http-client/1.1"),
-					attribute.String("http.client_ip", expectClientIP),
+					attribute.String("http.client_ip", tt.wantClientIP),
 					attribute.String("net.protocol.version", "1.1"),
 					attribute.String("http.target", "/"),
 				},
-				HTTPServerRequest("", got, opts))
+				HTTPServerRequest("", got, tt.httpServerRequestOpts))
 		}
 	}
 
-	t.Run("client IP from network", testFn(nil, HTTPServerRequestOptions{}, "1.2.3.4"))
+	t.Run("client IP from network", testFn(testParams{
+		wantClientIP: "1.2.3.4",
+	}))
 
-	t.Run("client IP from X-Forwarded-For header", testFn(
-		func(r *http.Request) {
+	t.Run("client IP from X-Forwarded-For header", testFn(testParams{
+		requestModifierFn: func(r *http.Request) {
 			r.Header.Add("X-Forwarded-For", "5.6.7.8")
 		},
-		HTTPServerRequestOptions{},
-		"5.6.7.8",
-	))
+		wantClientIP: "5.6.7.8",
+	}))
 
-	t.Run("set client IP in options", testFn(
-		func(r *http.Request) {
+	t.Run("set client IP in options", testFn(testParams{
+		requestModifierFn: func(r *http.Request) {
 			r.Header.Add("X-Forwarded-For", "5.6.7.8")
 		},
-		HTTPServerRequestOptions{
+		httpServerRequestOpts: HTTPServerRequestOptions{
 			HTTPClientIP: "9.8.7.6",
 		},
-		"9.8.7.6",
-	))
+		wantClientIP: "9.8.7.6",
+	}))
 }
 
 func TestHTTPServerRequestMetrics(t *testing.T) {
