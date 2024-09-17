@@ -166,14 +166,36 @@ func TestHTTPClientRequestRequired(t *testing.T) {
 }
 
 func TestHTTPServerRequest(t *testing.T) {
-	type testParams struct {
+	for _, tt := range []struct {
+		name                  string
 		requestModifierFn     func(r *http.Request)
 		httpServerRequestOpts HTTPServerRequestOptions
-		wantClientIP          string
-	}
 
-	testFn := func(tt testParams) func(t *testing.T) {
-		return func(t *testing.T) {
+		wantClientIP string
+	}{
+		{
+			name:         "with a client IP from the network",
+			wantClientIP: "1.2.3.4",
+		},
+		{
+			name: "with a client IP from x-forwarded-for header",
+			requestModifierFn: func(r *http.Request) {
+				r.Header.Add("X-Forwarded-For", "5.6.7.8")
+			},
+			wantClientIP: "5.6.7.8",
+		},
+		{
+			name: "with a cl;ient IP in options",
+			requestModifierFn: func(r *http.Request) {
+				r.Header.Add("X-Forwarded-For", "5.6.7.8")
+			},
+			httpServerRequestOpts: HTTPServerRequestOptions{
+				HTTPClientIP: "9.8.7.6",
+			},
+			wantClientIP: "9.8.7.6",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
 			reqCh := make(chan *http.Request, 1)
 			handler := func(w http.ResponseWriter, r *http.Request) {
 				r.RemoteAddr = "1.2.3.4:5678"
@@ -227,29 +249,8 @@ func TestHTTPServerRequest(t *testing.T) {
 					attribute.String("http.target", "/"),
 				},
 				HTTPServerRequest("", got, tt.httpServerRequestOpts))
-		}
+		})
 	}
-
-	t.Run("client IP from network", testFn(testParams{
-		wantClientIP: "1.2.3.4",
-	}))
-
-	t.Run("client IP from X-Forwarded-For header", testFn(testParams{
-		requestModifierFn: func(r *http.Request) {
-			r.Header.Add("X-Forwarded-For", "5.6.7.8")
-		},
-		wantClientIP: "5.6.7.8",
-	}))
-
-	t.Run("set client IP in options", testFn(testParams{
-		requestModifierFn: func(r *http.Request) {
-			r.Header.Add("X-Forwarded-For", "5.6.7.8")
-		},
-		httpServerRequestOpts: HTTPServerRequestOptions{
-			HTTPClientIP: "9.8.7.6",
-		},
-		wantClientIP: "9.8.7.6",
-	}))
 }
 
 func TestHTTPServerRequestMetrics(t *testing.T) {
