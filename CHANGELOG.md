@@ -21,7 +21,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Superfluous call to `WriteHeader` when flushing after setting a status code in `go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp`. (#6074)
 - Superfluous call to `WriteHeader` when writing the response body after setting a status code in `go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp`. (#6055)
-- Use Gin's own `ClientIP` method to detect the client's IP, which supports custom proxy headers, in `go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin`
+- Use Gin's own `ClientIP` method to detect the client's IP, which supports custom proxy headers in `go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin`. (#6095)
 
 <!-- Released section -->
 <!-- Don't change this section unless doing release -->
